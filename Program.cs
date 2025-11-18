@@ -2,10 +2,16 @@ using BlazingPizza;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure SQLite DB path from environment variable
+var dbPath = Environment.GetEnvironmentVariable("SQLITE_PATH") ?? "pizza.db";
+Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpClient();
-builder.Services.AddSqlite<PizzaStoreContext>("Data Source=pizza.db");
+
+// Configure EF Core with SQLite
+builder.Services.AddSqlite<PizzaStoreContext>($"Data Source={dbPath}");
 builder.Services.AddScoped<OrderState>();
 
 var app = builder.Build();
@@ -24,8 +30,7 @@ app.MapFallbackToPage("/_Host");
 app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
 
 // Initialize the database
-var scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
-using (var scope = scopeFactory.CreateScope())
+using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<PizzaStoreContext>();
     if (db.Database.EnsureCreated())
@@ -34,6 +39,4 @@ using (var scope = scopeFactory.CreateScope())
     }
 }
 
-
 app.Run();
-
